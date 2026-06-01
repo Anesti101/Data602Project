@@ -26,6 +26,15 @@ The goal is to create a reliable and scalable data platform that supports effici
 
 This board is used to manage the project backlog, sprint planning, task assignments, and progress tracking throughout the development lifecycle.
 
+## Entity Relationship Diagram (ERD)
+
+The database design for this project is documented in the Entity Relationship Diagram (ERD) below:
+
+**Lucidchart ERD:**  
+https://lucid.app/lucidchart/1b20898e-7bbb-4a2b-a74b-ddf758de2c46/edit?invitationId=inv_dccf5f6c-687c-4862-9100-6ad4f48f462c&page=0_0#
+
+The ERD defines the relationships between candidate recruitment data, technical assessments, academy enrolment records, trainers, and trainee performance reviews. The database is designed following Third Normal Form (3NF) principles to minimise redundancy and ensure data integrity.
+
 ## Project Structure
 
 ```text
