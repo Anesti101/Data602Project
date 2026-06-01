@@ -67,3 +67,12 @@ https://lucid.app/lucidchart/1b20898e-7bbb-4a2b-a74b-ddf758de2c46/edit?invitatio
 
 The ERD defines the relationships between candidate recruitment data, technical assessments, academy enrolment records, trainers, and trainee performance reviews. The database is designed following Third Normal Form (3NF) principles to minimise redundancy and ensure data integrity.
 
+## Documentation
+
+The project documentation and development standards for this project are available below:
+
+### Documentation Guide
+
+https://docs.google.com/document/d/1jaSOddx5mvyZotscgOYWtfAxV1iPI86eR_tOPjIF16Y/edit?tab=t.0
+
+The documentation guide contains the project standards, conventions, notation, and supporting information used throughout the development lifecycle. It serves as a central reference for project documentation and team collaboration.
