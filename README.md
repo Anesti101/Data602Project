@@ -25,3 +25,32 @@ The goal is to create a reliable and scalable data platform that supports effici
 [Trello Scrum Board](https://trello.com/b/O4sMbjqY)
 
 This board is used to manage the project backlog, sprint planning, task assignments, and progress tracking throughout the development lifecycle.
+
+## Project Structure
+
+```text
+sparta-etl-pipeline/
+│
+├── README.md
+├── requirements.txt
+├── .gitignore
+│
+├── data/
+│   ├── raw/
+│   └── processed/
+│
+├── src/
+│   ├── extract.py
+│   ├── transform.py
+│   ├── load.py
+│   └── main.py
+│
+├── sql/
+│   └── schema.sql
+│
+├── docs/
+│   ├── ERD/
+│   └── sprint-notes/
+│
+└── tests/
+```
