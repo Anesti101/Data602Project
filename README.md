@@ -52,27 +52,29 @@ sparta-etl-project/
 
 ## Project Management
 
+
 ### Trello Board
+
+Manage project backlog, sprint planning, task assignments, and progress tracking.
 
 [Trello Scrum Board](https://trello.com/b/O4sMbjqY)
 
-This board is used to manage the project backlog, sprint planning, task assignments, and progress tracking throughout the development lifecycle.
+---
+
+## Database Design
 
 ### Entity Relationship Diagram (ERD)
 
-The database design for this project is documented in the Entity Relationship Diagram (ERD) below:
+The database design and table relationships are documented in the ERD.
 
-**Lucidchart ERD:**  
-https://lucid.app/lucidchart/1b20898e-7bbb-4a2b-a74b-ddf758de2c46/edit?invitationId=inv_dccf5f6c-687c-4862-9100-6ad4f48f462c&page=0_0#
+[Lucidchart ERD](https://lucid.app/lucidchart/1b20898e-7bbb-4a2b-a74b-ddf758de2c46/edit?invitationId=inv_dccf5f6c-687c-4862-9100-6ad4f48f462c&page=0_0#)
 
-The ERD defines the relationships between candidate recruitment data, technical assessments, academy enrolment records, trainers, and trainee performance reviews. The database is designed following Third Normal Form (3NF) principles to minimise redundancy and ensure data integrity.
+---
 
 ## Documentation
 
-The project documentation and development standards for this project are available below:
-
 ### Documentation Guide
 
-https://docs.google.com/document/d/1jaSOddx5mvyZotscgOYWtfAxV1iPI86eR_tOPjIF16Y/edit?tab=t.0
+Project standards, notation conventions, and supporting documentation.
 
-The documentation guide contains the project standards, conventions, notation, and supporting information used throughout the development lifecycle. It serves as a central reference for project documentation and team collaboration.
+[Documentation Guide](https://docs.google.com/document/d/1jaSOddx5mvyZotscgOYWtfAxV1iPI86eR_tOPjIF16Y/edit?tab=t.0)
