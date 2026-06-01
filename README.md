@@ -29,15 +29,18 @@ This board is used to manage the project backlog, sprint planning, task assignme
 ## Project Structure
 
 ```text
-sparta-etl-pipeline/
+sparta-etl-project/
 │
 ├── README.md
-├── requirements.txt
-├── .gitignore
 │
-├── data/
-│   ├── raw/
-│   └── processed/
+├── docs/
+│   ├── project-plan.md
+│   ├── user-stories.md
+│   └── erd.png
+│
+├── sql/
+│   ├── schema.sql
+│   └── queries.sql
 │
 ├── src/
 │   ├── extract.py
@@ -45,12 +48,11 @@ sparta-etl-pipeline/
 │   ├── load.py
 │   └── main.py
 │
-├── sql/
-│   └── schema.sql
+├── tests/
+│   └── test_etl.py
 │
-├── docs/
-│   ├── ERD/
-│   └── sprint-notes/
-│
-└── tests/
+└── databricks/
+    ├── ingest.py
+    ├── transform.py
+    └── load.py
 ```
