@@ -58,7 +58,7 @@ sparta-etl-project/
 
 This board is used to manage the project backlog, sprint planning, task assignments, and progress tracking throughout the development lifecycle.
 
-## Entity Relationship Diagram (ERD)
+### Entity Relationship Diagram (ERD)
 
 The database design for this project is documented in the Entity Relationship Diagram (ERD) below:
 
