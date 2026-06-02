@@ -22,10 +22,7 @@ for file in applicants_files:
 dfs = []
 
 for file in applicants_files:
-    obj = s3.get_object(
-        Bucket=bucket_name,
-        Key=file
-    )
+    obj = s3.get_object(Bucket=bucket_name, Key=file)
 
     df = pd.read_csv(BytesIO(obj["Body"].read()))
     df["source_file"] = file
