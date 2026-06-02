@@ -2,6 +2,7 @@ import boto3
 import pandas as pd
 from io import BytesIO
 from pprint import pprint as pp
+from pyspark.sql import SparkSession
 
 s3 = boto3.client("s3")
 
@@ -29,8 +30,7 @@ for file in applicants_files:
     )
     dfs.append(df)
 
-all_applicants = pd.concat(
-    dfs, ignore_index=True
-)  # Concatenate all the DataFrames into a single DataFrame and ignore the index
-
-print(all_applicants.head())
+all_applicants = pd.concat( dfs, ignore_index=True)  # Concatenate all the DataFrames into a single DataFrame and ignore the index
+spark_df = spark.createDataFrame(all_applicants)
+spark_df.write.mode("overwrite").saveAsTable("applicants")
+spark.sql("SELECT * FROM applicants").show()
