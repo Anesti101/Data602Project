@@ -28,22 +28,21 @@ def create_candidate_table(spark):
 def create_interview_table(spark):
     candidates = spark.table("candidates_clean")
 
-    interview_df = (
-        candidates.select(
+    interview_df = candidates.select(
             "candidate_id",
             col("date").alias("interview_date"),
             "result",
             "course_interest",
         )
-        .withColumn("interview_id", row_number().over(Window.orderBy("candidate_id")))
-        .select(
-            "interview_id",
-            "candidate_id",
-            "interview_date",
-            "result",
-            "course_interest",
-        )
-    )
+        # .withColumn("interview_id", row_number().over(Window.orderBy("candidate_id")))
+        # .select(
+        #     "interview_id",
+        #     "candidate_id",
+        #     "interview_date",
+        #     "result",
+        #     "course_interest",
+        # )
+    
 
     return interview_df
 
@@ -71,12 +70,11 @@ def create_strength_table(spark):
 
     strengths_df = candidates.select(
         explode(col("strengths")).alias("strength_name")
-        ).distinct() \
-        .withColumn(
-            "strength_id", 
-            row_number().over(Window.orderBy("strength_name"))
-    )
-
+        ).distinct() 
+        # .withColumn(
+            # "strength_id", 
+            # row_number().over(Window.orderBy("strength_name"))
+    
     return strengths_df
 
 
@@ -84,13 +82,14 @@ def create_candidate_strength_table(spark):
     candidates = spark.table("candidates_clean")
 
     candidate_strength_df = candidates.select(
-        "candidate_id", explode(col("strengths")).alias("strength_name")
+        "candidate_id", 
+        explode(col("strengths")).alias("strength_name")
     )
-    strengths = create_strength_table(spark)
+    # strengths = create_strength_table(spark)
 
-    candidate_strength_df = candidate_strength_df.join(
-        strengths, on="strength_name", how="left"
-    ).select("candidate_id", "strength_id")
+    # candidate_strength_df = candidate_strength_df.join(
+    #     strengths, on="strength_name", how="left"
+    # ).select("candidate_id", "strength_id")
 
     return candidate_strength_df
 
@@ -101,9 +100,8 @@ def create_weakness_table(spark):
     weaknesses_df = (
         candidates.select(explode(col("weaknesses")).alias("weakness_name"))
         .distinct()
-        .withColumn("weakness_id", row_number().over(Window.orderBy("weakness_name")))
+        # .withColumn("weakness_id", row_number().over(Window.orderBy("weakness_name")))
     )
-
     return weaknesses_df
 
 
@@ -111,13 +109,14 @@ def create_candidate_weakness_table(spark):
     candidates = spark.table("candidates_clean")
 
     candidate_weakness_df = candidates.select(
-        "candidate_id", explode(col("weaknesses")).alias("weakness_name")
+        "candidate_id", 
+        explode(col("weaknesses")).alias("weakness_name")
     )
-    weaknesses = create_weakness_table(spark)
+    # weaknesses = create_weakness_table(spark)
 
-    candidate_weakness_df = candidate_weakness_df.join(
-        weaknesses, on="weakness_name", how="left"
-    ).select("candidate_id", "weakness_id")
+    # candidate_weakness_df = candidate_weakness_df.join(
+    #     weaknesses, on="weakness_name", how="left"
+    # ).select("candidate_id", "weakness_id")
 
     return candidate_weakness_df
 
