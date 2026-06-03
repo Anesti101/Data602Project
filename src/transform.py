@@ -1,12 +1,39 @@
-import boto3
-import pandas as pd
-from io import BytesIO
-from pprint import pprint as pp
+def create_candidate_table(spark):
 
-s3 = boto3.client("s3")
+    applicants = spark.table("bronze_applicants")
 
-bucket_name = "data602-final-project"
+    candidate_df = applicants.select(
+        "id",
+        "name",
+        "gender",
+        "dob",
+        "email",
+        "city",
+        "address",
+        "postcode",
+        "phone_num",
+        "uni",
+        "degree",
+        "invited_date",
+        "invited_by"
+    )
 
-response = s3.list_objects_v2(Bucket=bucket_name)
+    return candidate_df
 
-pp(response)
+def create_interview_table(spark):
+    pass
+
+def create_technology_table(spark):
+    pass
+
+def create_strength_table(spark):
+    pass
+
+def create_weakness_table(spark):
+    pass
+
+def create_trainee_table(spark):
+    pass
+
+def create_score_table(spark):
+    pass
