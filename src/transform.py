@@ -1,28 +1,10 @@
-from pyspark.sql.functions import ( col, explode, monotonically_increasing_id, row_number)
+from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 
-
 def create_candidate_table(spark):
+    pass
 
-    applicants = spark.table("bronze_applicants")
-
-    candidate_df = applicants.select(
-        "id",
-        "name",
-        "gender",
-        "dob",
-        "email",
-        "city",
-        "address",
-        "postcode",
-        "phone_num",
-        "uni",
-        "degree",
-        "invited_date",
-        "invited_by"
-    )
-
-    return candidate_df
+ 
 
 
 def create_interview_table(spark):
@@ -46,6 +28,8 @@ def create_interview_table(spark):
 
     return interview_df
 
+
+
 def create_technology_table(spark):
     technology_df = spark.table("technology_clean").select(
         "technology_id",
@@ -63,7 +47,6 @@ def create_candidate_technology_table(spark):
     )
 
     return candidate_technology_df
-
 
 def create_strength_table(spark):
     candidates = spark.table("candidates_clean")
@@ -93,7 +76,6 @@ def create_candidate_strength_table(spark):
 
     return candidate_strength_df
 
-
 def create_weakness_table(spark):
     candidates = spark.table("candidates_clean")
 
@@ -120,18 +102,113 @@ def create_candidate_weakness_table(spark):
 
     return candidate_weakness_df
 
-
 def create_trainee_table(spark):
     pass
 
 def create_trainer_table(spark):
-    pass
+
+    academy_df = spark.table("all_academy")
+    trainer_df = (academy_df.select("trainer").distinct())
+    trainer_df = trainer_df.withColumn("trainer_id",row_number().over(Window.orderBy("trainer")))
+    trainer_df = trainer_df.select("trainer_id", "trainer")
+
+    return trainer_df
 
 def create_weekly_review_table(spark):
-    pass
+
+    academy_df = spark.table("all_academy") # 
+    competency_columns = [c for c in academy_df.columns if "_W" in c] 
+    weeks = sorted(set(int(c.split("_W")[1])for c in competency_columns ))
+    base_df = (academy_df.select("name","trainer" ).distinct())
+    weekly_review_df = None
+
+    for week in weeks:
+        temp_df = (base_df.withColumn("week",lit(week)))
+
+        if weekly_review_df is None:
+            weekly_review_df = temp_df
+        else:
+            weekly_review_df = weekly_review_df.union(temp_df)
+
+    weekly_review_df = weekly_review_df.withColumn("review_id",row_number().over(Window.orderBy( "name", "week")))
+    weekly_review_df = weekly_review_df.select( "review_id","name", "trainer","week")
+    return weekly_review_df
+
+
 
 def create_competency_table(spark):
-    pass
+
+    competencies = [
+        ("Analytic",),
+        ("Independent",),
+        ("Determined",),
+        ("Professional",),
+        ("Studious",),
+        ("Imaginative",)
+
+    ]
+    competency_df = spark.createDataFrame(competencies,["competency_name"])
+    competency_df = competency_df.withColumn("competency_id", row_number().over(Window.orderBy("competency_name")))
+    competency_df = competency_df.select(  "competency_id", "competency_name")
+
+    return competency_df
+    
+from pyspark.sql.functions import lower, trim, col
+
+def create_assessment_table(spark):
+    assessments = spark.table("silver_assessments")
+    candidates = spark.table("candidates_clean")
+
+    assessment_df = assessments.join(
+        candidates,
+        lower(trim(assessments.candidate_name)) == lower(trim(candidates.name)),
+        "left"
+    ).select(
+        candidates.candidate_id,
+        assessments.psychometric_score,
+        assessments.presentation_score,
+        assessments.assessment_date,
+        assessments.location
+    )
+
+    return assessment_df
+
 
 def create_score_table(spark):
-    pass
+    academy_df = spark.table("all_academy")
+    weekly_review_df = create_weekly_review_table(spark)
+    competency_df = create_competency_table(spark)
+
+    competency_columns = [c for c in academy_df.columns if "_W" in c]
+
+    stack_expr = ", ".join( [f"'{c}', `{c}`" for c in competency_columns])
+
+    score_df = academy_df.selectExpr(
+        "name",
+        "trainer",
+        f"stack({len(competency_columns)}, {stack_expr}) as (competency_week, score_value)"
+    )
+
+    score_df = score_df.withColumn(
+        "competency_name",
+        split(col("competency_week"), "_W")[0]
+    ).withColumn(
+        "week",
+        split(col("competency_week"), "_W")[1].cast("int")
+    )
+
+    score_df = score_df.join(
+        weekly_review_df,
+        on=["name", "trainer", "week"],
+        how="left"
+    ).join(
+        competency_df,
+        on="competency_name",
+        how="left"
+    ).select(
+        "review_id",
+        "competency_id",
+        "score_value"
+    )
+
+    return score_df
