@@ -170,6 +170,26 @@ def create_competency_table(spark):
 
     return competency_df
     
+from pyspark.sql.functions import lower, trim, col
+
+def create_assessment_table(spark):
+    assessments = spark.table("silver_assessments")
+    candidates = spark.table("candidates_clean")
+
+    assessment_df = assessments.join(
+        candidates,
+        lower(trim(assessments.candidate_name)) == lower(trim(candidates.name)),
+        "left"
+    ).select(
+        candidates.candidate_id,
+        assessments.psychometric_score,
+        assessments.presentation_score,
+        assessments.assessment_date,
+        assessments.location
+    )
+
+    return assessment_df
+
 
 def create_score_table(spark):
     pass
