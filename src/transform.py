@@ -1,11 +1,57 @@
-from pyspark.sql.functions import *
+from pyspark.sql.functions import *  
 from pyspark.sql.window import Window
-
-def create_candidate_table(spark):
-    pass
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
 
  
-
+def create_candidate_table(spark: SparkSession) -> f"DataFrame":
+    """
+    Reads applicant data from the bronze layer, applies cleaning steps 
+    (date parsing, deduplication/ID generation), and returns the finalized candidate schema.
+    """
+    # 1. Load the raw bronze data
+    applicants = spark.table("all_applicants")
+    # 2. Parse and merge 'invited_date' and 'month' into a unified date format
+    # Also parse 'dob' using the specified dd/MM/yyyy format
+    df_cleaned = applicants.withColumn(
+        "date_string",
+        F.concat_ws("-", F.col("invited_date").cast("int"), F.col("month"))
+    ).withColumn(
+        "invited_date_parsed",
+        F.expr("try_to_date(NULLIF(date_string, ''), 'd-MMMM yyyy')")
+    ).withColumn(
+        "dob_parsed",
+        F.to_date(F.col("dob"), "dd/MM/yyyy")
+    )
+    # 3. Generate a fresh, unique auto-incremented candidate_id 
+    # (Addresses duplicate original ID issues)
+    window_spec = Window.orderBy(F.monotonically_increasing_id())
+    df_with_id = df_cleaned.withColumn(
+        "candidate_id",
+        F.row_number().over(window_spec)
+    )
+    # 4. Optional Data Quality Filter: Remove candidates with no contact info
+    # (Uncomment the .filter line below if you want to actively drop them from the output)
+    # df_with_id = df_with_id.filter(~(F.col("address").isNull() & F.col("email").isNull() & F.col("phone_num").isNull()))
+ 
+    # 5. Select and rename columns to map perfectly to the final expected schema
+    candidate_df = df_with_id.select(
+        F.col("candidate_id").alias("id"), # Mapping the new unique ID to 'id'
+        F.col("name"),
+        F.col("gender"),
+        F.col("dob_parsed").alias("dob"),
+        F.col("email"),
+        F.col("city"),
+        F.col("address"),
+        F.col("postcode"),
+        F.col("phone_num"), # Note: verified 'phone_num' matches your initial select statement
+        F.col("uni"),
+        F.col("degree"),
+        F.col("invited_date_parsed").alias("invited_date"),
+        F.col("invited_by")
+    )
+ 
+    return candidate_df
 
 def create_interview_table(spark):
     candidates = spark.table("candidates_clean")
@@ -172,6 +218,7 @@ def create_assessment_table(spark):
     )
 
     return assessment_df
+# more cleanning on names 
 
 
 def create_score_table(spark):
