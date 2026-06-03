@@ -35,5 +35,14 @@ def create_weakness_table(spark):
 def create_trainee_table(spark):
     pass
 
+def create_trainer_table(spark):
+    pass
+
+def create_weekly_review_table(spark):
+    pass
+
+def create_competency_table(spark):
+    pass
+
 def create_score_table(spark):
     pass
