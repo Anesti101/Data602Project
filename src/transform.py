@@ -175,4 +175,40 @@ def create_assessment_table(spark):
 
 
 def create_score_table(spark):
-    pass
+    academy_df = spark.table("all_academy")
+    weekly_review_df = create_weekly_review_table(spark)
+    competency_df = create_competency_table(spark)
+
+    competency_columns = [c for c in academy_df.columns if "_W" in c]
+
+    stack_expr = ", ".join( [f"'{c}', `{c}`" for c in competency_columns])
+
+    score_df = academy_df.selectExpr(
+        "name",
+        "trainer",
+        f"stack({len(competency_columns)}, {stack_expr}) as (competency_week, score_value)"
+    )
+
+    score_df = score_df.withColumn(
+        "competency_name",
+        split(col("competency_week"), "_W")[0]
+    ).withColumn(
+        "week",
+        split(col("competency_week"), "_W")[1].cast("int")
+    )
+
+    score_df = score_df.join(
+        weekly_review_df,
+        on=["name", "trainer", "week"],
+        how="left"
+    ).join(
+        competency_df,
+        on="competency_name",
+        how="left"
+    ).select(
+        "review_id",
+        "competency_id",
+        "score_value"
+    )
+
+    return score_df
