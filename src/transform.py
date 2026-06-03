@@ -2,26 +2,9 @@ from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 
 def create_candidate_table(spark):
+    pass
 
-    applicants = spark.table("bronze_applicants")
-
-    candidate_df = applicants.select(
-        "id",
-        "name",
-        "gender",
-        "dob",
-        "email",
-        "city",
-        "address",
-        "postcode",
-        "phone_num",
-        "uni",
-        "degree",
-        "invited_date",
-        "invited_by"
-    )
-
-    return candidate_df
+ 
 
 
 def create_interview_table(spark):
@@ -150,7 +133,7 @@ def create_weekly_review_table(spark):
     weekly_review_df = weekly_review_df.withColumn("review_id",row_number().over(Window.orderBy( "name", "week")))
     weekly_review_df = weekly_review_df.select( "review_id","name", "trainer","week")
     return weekly_review_df
-    
+
 
 
 def create_competency_table(spark):
