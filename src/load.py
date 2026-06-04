@@ -1,10 +1,6 @@
 from src.config import JDBC_URL, DB_USER, DB_PASSWORD
 
-    
 def load_table(df, table_name):
-    # Materialise the dataframe
-    materialised_df = df.cache() # cache the dataframe
-    materialised_df.count() # force the dataframe to be materialised
     (
         df.write
         .format("jdbc")
@@ -16,6 +12,19 @@ def load_table(df, table_name):
         .mode("append")
         .save()
     )
+
+def load_table(df, table_name):
+    
+
+    pandas_df = df.toPandas()
+
+    pandas_df.to_sql(
+        table_name,
+        engine,
+        if_exists="append",
+        index=False
+    )
+
     print(f"{table_name} loaded successfully.")
 
 

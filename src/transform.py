@@ -222,8 +222,12 @@ def create_assessment_table(spark: SparkSession) -> DataFrame:
         .select(
             "source_file",
             F.to_date(
-                F.col("line_text"),
-                "EEEE d MMMM yyyy"
+                F.regexp_replace(
+                    F.col("line_text"),
+                    r"^\w+\s+",
+                    ""
+                ),
+                "d MMMM yyyy"
             ).alias("assessment_date")
         )
     )
