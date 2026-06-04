@@ -18,37 +18,6 @@ The goal is to create a reliable and scalable data platform that supports effici
 - Trello
 - Agile Scrum Methodology
 
-## Project Structure
-
-```text
-sparta-etl-project/
-│
-├── README.md
-│
-├── docs/
-│   ├── project-plan.md
-│   ├── user-stories.md
-│   └── erd.png
-│
-├── sql/
-│   ├── schema.sql
-│   └── queries.sql
-│
-├── src/
-│   ├── extract.py
-│   ├── transform.py
-│   ├── load.py
-│   └── main.py
-│
-├── tests/
-│   └── test_etl.py
-│
-└── databricks/
-    ├── ingest.py
-    ├── transform.py
-    └── load.py
-```
-
 
 ## Project Management
 
