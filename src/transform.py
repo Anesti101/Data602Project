@@ -16,13 +16,21 @@ def _name_key(column: Column) -> Column:
 
 
 def _parse_date(column: Column) -> Column:
-    cleaned = F.regexp_replace(_clean_text(column), "//", "/")
-    return F.coalesce(
-        F.to_date(cleaned, "dd/MM/yyyy"),
-        F.to_date(cleaned, "d/M/yyyy"),
-        F.to_date(cleaned, "MMMM d yyyy"),
-        F.to_date(cleaned, "d MMMM yyyy"),
-        F.to_date(cleaned, "yyyy-MM-dd")
+
+    cleaned = _clean_text(column)
+
+    return (
+        F.when(cleaned.isNull(), None)
+        .when(F.trim(cleaned) == "", None)
+        .otherwise(
+            F.coalesce(
+                F.try_to_timestamp(cleaned, F.lit("dd/MM/yyyy")).cast("date"),
+                F.try_to_timestamp(cleaned, F.lit("d/M/yyyy")).cast("date"),
+                F.try_to_timestamp(cleaned, F.lit("MMMM d yyyy")).cast("date"),
+                F.try_to_timestamp(cleaned, F.lit("d MMMM yyyy")).cast("date"),
+                F.try_to_timestamp(cleaned, F.lit("yyyy-MM-dd")).cast("date")
+            )
+        )
     )
 
 
@@ -129,16 +137,22 @@ def create_candidate_table(spark: SparkSession) -> DataFrame:
         .withColumn("invited_by", _clean_text(F.col("invited_by")))
         .withColumn("dob", _parse_date(F.col("dob")))
         .withColumn(
-            "invited_date",
-            F.to_date(
-                F.concat_ws(
-                    "-",
-                    F.col("invited_date").cast("int").cast("string"),
-                    _clean_text(F.col("month"))
-                ),
-                "d-MMMM yyyy"
+                "invited_date",
+               F.when(
+                    _clean_text(F.col("month")).isNull(),
+                    None
+               ).otherwise(
+                    F.try_to_timestamp(
+                       F.concat_ws(
+                            "-",
+                        F.col("invited_date").cast("string"),
+                        _clean_text(F.col("month"))
+                   ),
+                   F.lit("d-MMMM yyyy")
+                ).cast("date")
             )
-        )
+      )
+      
         .withColumn("source_file", F.col("Source_file"))
         .dropDuplicates(["name", "dob", "email", "source_file", "invited_date"])
     )
