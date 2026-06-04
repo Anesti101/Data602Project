@@ -3,7 +3,7 @@ import pandas as pd
 from io import BytesIO
 from pprint import pprint as pp
 import json
-#from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession
 
 s3 = boto3.client('s3')
 
@@ -37,6 +37,6 @@ for file in talent_json_files[:5]:
 
 all_talent = pd.concat(dfs, ignore_index=True)
 
-# spark_df = spark.createDataFrame(all_talent)
-# spark_df.write.mode("overwrite").saveAsTable("talent")
-# spark.sql("SELECT * FROM talent").show()
+spark_df = spark.createDataFrame(all_talent)
+spark_df.write.mode("overwrite").saveAsTable("talent")
+spark.sql("SELECT * FROM talent").show()

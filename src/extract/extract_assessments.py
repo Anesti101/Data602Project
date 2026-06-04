@@ -1,7 +1,7 @@
 import boto3
 import pandas as pd
 from io import BytesIO
-#from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession
 
 s3 = boto3.client("s3")
 
@@ -36,6 +36,6 @@ for file in assessment_files:
 
 all_assessments = pd.DataFrame(rows)
 
-# spark_df = spark.createDataFrame(all_assessments)
-# spark_df.write.mode("overwrite").saveAsTable("assessments")
-# spark.sql("SELECT * FROM assessments").show()
+spark_df = spark.createDataFrame(all_assessments)
+spark_df.write.mode("overwrite").saveAsTable("assessments")
+spark.sql("SELECT * FROM assessments").show()

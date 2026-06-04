@@ -2,7 +2,7 @@ import boto3
 import pandas as pd
 from io import BytesIO
 from pprint import pprint as pp
-#from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession
 
 
 s3 = boto3.client("s3")
@@ -35,7 +35,6 @@ for file in academy_files:
  
 all_academy = pd.concat(dfs, ignore_index=True)
 
-pp(all_academy)
-# spark_df = spark.createDataFrame(all_academy)
-# spark_df.write.mode("overwrite").saveAsTable("academy")
-# spark.sql("SELECT * FROM academy").show()
+spark_df = spark.createDataFrame(all_academy)
+spark_df.write.mode("overwrite").saveAsTable("academy")
+spark.sql("SELECT * FROM academy").show()
