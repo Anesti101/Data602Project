@@ -1,7 +1,10 @@
-from config import JDBC_URL, DB_USER, DB_PASSWORD
+from src.config import JDBC_URL, DB_USER, DB_PASSWORD
 
     
 def load_table(df, table_name):
+    # Materialise the dataframe
+    materialised_df = df.cache() # cache the dataframe
+    materialised_df.count() # force the dataframe to be materialised
     (
         df.write
         .format("jdbc")
@@ -14,6 +17,7 @@ def load_table(df, table_name):
         .save()
     )
     print(f"{table_name} loaded successfully.")
+
 
 
 def load_candidate(candidate_df):
