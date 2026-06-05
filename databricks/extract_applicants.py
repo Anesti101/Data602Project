@@ -1,3 +1,18 @@
+"""
+Module: extract_applicants.py
+
+Purpose:
+Discover applicant CSV files in S3 and print the discovered source keys.
+
+Responsibilities:
+- Connect to AWS S3 and list bucket contents
+- Identify applicant files by suffix
+- Demonstrate data extraction discovery logic
+- Preserve source file key metadata for later ingest steps
+
+Author: Project Team
+"""
+
 import boto3
 import pandas as pd
 from io import BytesIO
@@ -25,6 +40,7 @@ print("Applicants files in bucket:")
 for file in applicants_files:
     print(file) # Print the key of each file that matches the filter
  
+
 dfs = []
  
 for file in applicants_files:

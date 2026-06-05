@@ -1,3 +1,18 @@
+"""
+Module: extract_assessments.py
+
+Purpose:
+Extract assessment text source files from S3 and persist line-level records to Spark.
+
+Responsibilities:
+- Connect to AWS S3 and find assessment text files in the Talent prefix
+- Parse each file into line_text records with source_file metadata
+- Create a Spark table for downstream assessment parsing
+- Document extraction and normalization behavior for assessment data
+
+Author: Project Team
+"""
+
 import boto3
 import pandas as pd
 from io import BytesIO
@@ -34,6 +49,7 @@ for file in assessment_files:
             "line_text": line
         })
 
+# Flatten the assessment text into a DataFrame to support regex extraction later.
 all_assessments = pd.DataFrame(rows)
 
 spark_df = spark.createDataFrame(all_assessments)

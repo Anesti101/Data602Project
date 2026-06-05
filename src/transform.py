@@ -1,9 +1,33 @@
+"""
+Module: transform.py
+
+Purpose:
+Transform raw extracted data into analytics-ready datasets for the ETL pipeline.
+
+Responsibilities:
+- Clean text fields and normalize values
+- Parse dates from inconsistent formats
+- Generate dimension and fact tables for candidate, assessment, interview, and academy data
+- Create relational tables for technology, strengths, weaknesses, and scores
+
+Author: Project Team
+"""
+
 from pyspark.sql import Column, DataFrame, SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
 
 def _clean_text(column: Column) -> Column:
+    """
+    Standardize raw text fields for downstream matching.
+
+    Args:
+        column: Input column containing raw text or mixed types.
+
+    Returns:
+        Column: Trimmed text with null values normalized.
+    """
     cleaned = F.trim(column.cast("string"))
     return F.when(
         cleaned.isNull() | (cleaned == "") | (F.lower(cleaned) == "null"),
@@ -12,11 +36,28 @@ def _clean_text(column: Column) -> Column:
 
 
 def _name_key(column: Column) -> Column:
+    """
+    Produce a normalized key for name matching.
+
+    Args:
+        column: Input name column.
+
+    Returns:
+        Column: Lowercase whitespace-normalized key.
+    """
     return F.lower(F.regexp_replace(F.trim(column.cast("string")), r"\s+", " "))
 
 
 def _parse_date(column: Column) -> Column:
+    """
+    Parse date strings from a variety of expected formats.
 
+    Args:
+        column: Column containing raw date values.
+
+    Returns:
+        Column: Date column with invalid values converted to null.
+    """
     cleaned = _clean_text(column)
 
     return (
@@ -35,6 +76,15 @@ def _parse_date(column: Column) -> Column:
 
 
 def _candidate_lookup(spark: SparkSession) -> DataFrame:
+    """
+    Build a one-to-one lookup of candidates for joining raw sources.
+
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Candidate lookup table keyed by normalized name.
+    """
     candidates = create_candidate_table(spark).select(
         "candidate_id",
         _name_key(F.col("name")).alias("candidate_name_key")
@@ -53,6 +103,15 @@ def _candidate_lookup(spark: SparkSession) -> DataFrame:
 
 
 def _academy_base_with_candidate(spark: SparkSession) -> DataFrame:
+    """
+    Derive academy records enriched with candidate matching.
+
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Academy data joined to candidate IDs.
+    """
     academy_df = spark.table("all_academy")
     candidate_lookup = _candidate_lookup(spark)
 
@@ -89,9 +148,16 @@ def _academy_base_with_candidate(spark: SparkSession) -> DataFrame:
     )
 
 
-
-
 def create_candidate_table(spark: SparkSession) -> DataFrame:
+    """
+    Transform applicant source records into the candidate dimension.
+
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Candidate table with normalized contact and demographic fields.
+    """
     applicants = spark.table("all_applicants")
     phone_col = "phone_num" if "phone_num" in applicants.columns else "phone_number"
 
@@ -124,7 +190,6 @@ def create_candidate_table(spark: SparkSession) -> DataFrame:
                 ).cast("date")
             )
       )
-      
         .withColumn("source_file", F.col("Source_file"))
         .dropDuplicates(["name", "dob", "email", "source_file", "invited_date"])
     )
@@ -159,165 +224,86 @@ def create_candidate_table(spark: SparkSession) -> DataFrame:
 
 
 def create_assessment_table(spark: SparkSession) -> DataFrame:
+    """
+    Extract assessment metrics from text lines and match them to candidates.
 
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Assessment table with psychometric and presentation scores.
+    """
     assessments = spark.table("all_assessments")
-
     candidate_lookup = _candidate_lookup(spark)
 
     assessment_df = (
         assessments
-
-        .filter(
-            F.col("line_text").contains("Psychometrics")
-        )
-
-        .withColumn(
-            "candidate_name",
-            F.trim(
-                F.regexp_extract(
-                    F.col("line_text"),
-                    r"^(.*?)\s*-\s*Psychometrics",
-                    1
-                )
-            )
-        )
-
-        .withColumn(
-            "psychometric_score",
-            F.regexp_extract(
-                F.col("line_text"),
-                r"Psychometrics:\s*(\d+)",
-                1
-            ).cast("int")
-        )
-
-        .withColumn(
-            "presentation_score",
-            F.regexp_extract(
-                F.col("line_text"),
-                r"Presentation:\s*(\d+)",
-                1
-            ).cast("int")
-        )
-
-        .withColumn(
-            "candidate_name_key",
-            _name_key(F.col("candidate_name"))
-        )
-
-        .join(
-            candidate_lookup,
-            on="candidate_name_key",
-            how="inner"
-        )
+        .filter(F.col("line_text").contains("Psychometrics"))
+        .withColumn("candidate_name", F.trim(F.regexp_extract(F.col("line_text"), r"^(.*?)\s*-\s*Psychometrics", 1)))
+        .withColumn("psychometric_score", F.regexp_extract(F.col("line_text"), r"Psychometrics:\s*(\d+)", 1).cast("int"))
+        .withColumn("presentation_score", F.regexp_extract(F.col("line_text"), r"Presentation:\s*(\d+)", 1).cast("int"))
+        .withColumn("candidate_name_key", _name_key(F.col("candidate_name")))
+        .join(candidate_lookup, on="candidate_name_key", how="inner")
     )
 
     date_lookup = (
         assessments
-        .filter(
-            F.col("line_text").rlike(
-                r"^\w+\s+\d+\s+\w+\s+\d{4}$"
-            )
-        )
-        .select(
-            "source_file",
-            F.to_date(
-                F.regexp_replace(
-                    F.col("line_text"),
-                    r"^\w+\s+",
-                    ""
-                ),
-                "d MMMM yyyy"
-            ).alias("assessment_date")
-        )
+        .filter(F.col("line_text").rlike(r"^\w+\s+\d+\s+\w+\s+\d{4}$"))
+        .select("source_file", F.to_date(F.regexp_replace(F.col("line_text"), r"^\w+\s+", ""), "d MMMM yyyy").alias("assessment_date"))
     )
 
     location_lookup = (
         assessments
-        .filter(
-            F.col("line_text").contains("Academy")
-        )
-        .select(
-            "source_file",
-            F.col("line_text").alias("location")
-        )
+        .filter(F.col("line_text").contains("Academy"))
+        .select("source_file", F.col("line_text").alias("location"))
     )
 
     assessment_df = (
         assessment_df
-        .join(
-            date_lookup,
-            on="source_file",
-            how="left"
-        )
-        .join(
-            location_lookup,
-            on="source_file",
-            how="left"
-        )
-        .withColumn(
-            "assessment_id",
-            F.row_number().over(
-                Window.orderBy(
-                    "candidate_id",
-                    "assessment_date"
-                )
-            )
-        )
-        .select(
-            "assessment_id",
-            "candidate_id",
-            "psychometric_score",
-            "presentation_score",
-            "assessment_date",
-            "location"
-        )
+        .join(date_lookup, on="source_file", how="left")
+        .join(location_lookup, on="source_file", how="left")
+        .withColumn("assessment_id", F.row_number().over(Window.orderBy("candidate_id", "assessment_date")))
+        .select("assessment_id", "candidate_id", "psychometric_score", "presentation_score", "assessment_date", "location")
     )
 
     return assessment_df
 
-def create_interview_table(spark: SparkSession) -> DataFrame:
 
+def create_interview_table(spark: SparkSession) -> DataFrame:
+    """
+    Transform talent interview records to the interview fact table.
+
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Interview table with interview date and candidate link.
+    """
     talent = spark.table("all_talent")
     candidate_lookup = _candidate_lookup(spark)
 
     interview_df = (
         talent
-        .withColumn(
-            "candidate_name_key",
-            _name_key(F.col("name"))
-        )
-        .join(
-            candidate_lookup,
-            on="candidate_name_key",
-            how="inner"
-        )
-        .withColumn(
-            "interview_date",
-            _parse_date(F.col("date"))
-        )
-        .withColumn(
-            "interview_id",
-            F.row_number().over(
-                Window.orderBy(
-                    "candidate_id",
-                    "interview_date"
-                )
-            )
-        )
-        .select(
-            "interview_id",
-            "candidate_id",
-            "interview_date",
-            F.col("result"),
-            F.col("course_interest")
-        )
+        .withColumn("candidate_name_key", _name_key(F.col("name")))
+        .join(candidate_lookup, on="candidate_name_key", how="inner")
+        .withColumn("interview_date", _parse_date(F.col("date")))
+        .withColumn("interview_id", F.row_number().over(Window.orderBy("candidate_id", "interview_date")))
+        .select("interview_id", "candidate_id", "interview_date", F.col("result"), F.col("course_interest"))
     )
 
     return interview_df
 
-def create_technology_table(spark: SparkSession) -> DataFrame:
 
+def create_technology_table(spark: SparkSession) -> DataFrame:
+    """
+    Build the technology dimension table from a static list.
+
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Technology dimension table.
+    """
     technologies = [
         ("C#",),
         ("Java",),
@@ -331,26 +317,22 @@ def create_technology_table(spark: SparkSession) -> DataFrame:
     ]
 
     return (
-        spark.createDataFrame(
-            technologies,
-            ["technology_name"]
-        )
-        .withColumn(
-            "technology_id",
-            F.row_number().over(
-                Window.orderBy("technology_name")
-            )
-        )
-        .select(
-            "technology_id",
-            "technology_name"
-        )
+        spark.createDataFrame(technologies, ["technology_name"])
+        .withColumn("technology_id", F.row_number().over(Window.orderBy("technology_name")))
+        .select("technology_id", "technology_name")
     )
 
-def create_candidate_technology_table(
-    spark: SparkSession
-) -> DataFrame:
 
+def create_candidate_technology_table(spark: SparkSession) -> DataFrame:
+    """
+    Convert self-reported talent technology scores into a relationship table.
+
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Candidate-technology scores joined to canonical technology IDs.
+    """
     talent = spark.table("all_talent")
     candidate_lookup = _candidate_lookup(spark)
     technology_df = create_technology_table(spark)
@@ -384,213 +366,161 @@ def create_candidate_technology_table(
 
     candidate_technology_df = (
         talent
-        .withColumn(
-            "candidate_name_key",
-            _name_key(F.col("name"))
-        )
-        .join(
-            candidate_lookup,
-            on="candidate_name_key",
-            how="inner"
-        )
-        .select(
-            "candidate_id",
-            F.expr(stack_expr)
-        )
+        .withColumn("candidate_name_key", _name_key(F.col("name")))
+        .join(candidate_lookup, on="candidate_name_key", how="inner")
+        .select("candidate_id", F.expr(stack_expr))
         .filter(F.col("score").isNotNull())
-        .join(
-            technology_df,
-            on="technology_name",
-            how="inner"
-        )
-        .select(
-            "candidate_id",
-            "technology_id",
-            F.col("score").cast("int")
-        )
-        .dropDuplicates(
-            ["candidate_id", "technology_id"]
-        )
+        .join(technology_df, on="technology_name", how="inner")
+        .select("candidate_id", "technology_id", F.col("score").cast("int"))
+        .dropDuplicates(["candidate_id", "technology_id"])
     )
 
     return candidate_technology_df
 
 
-def create_strength_table(
-    spark: SparkSession
-) -> DataFrame:
+def create_strength_table(spark: SparkSession) -> DataFrame:
+    """
+    Build the strength dimension table from talent strengths arrays.
 
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Strength dimension table.
+    """
     return (
         spark.table("all_talent")
-        .select(
-            F.explode("strengths").alias(
-                "strength_name"
-            )
-        )
-        .withColumn(
-            "strength_name",
-            _clean_text(
-                F.col("strength_name")
-            )
-        )
-        .filter(
-            F.col("strength_name").isNotNull()
-        )
+        .select(F.explode("strengths").alias("strength_name"))
+        .withColumn("strength_name", _clean_text(F.col("strength_name")))
+        .filter(F.col("strength_name").isNotNull())
         .distinct()
-        .withColumn(
-            "strength_id",
-            F.row_number().over(
-                Window.orderBy("strength_name")
-            )
-        )
-        .select(
-            "strength_id",
-            "strength_name"
-        )
+        .withColumn("strength_id", F.row_number().over(Window.orderBy("strength_name")))
+        .select("strength_id", "strength_name")
     )
 
-def create_candidate_strength_table(
-    spark: SparkSession
-) -> DataFrame:
 
+def create_candidate_strength_table(spark: SparkSession) -> DataFrame:
+    """
+    Map candidate records to canonical strength IDs.
+
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Candidate strength relationship table.
+    """
     talent = spark.table("all_talent")
     candidate_lookup = _candidate_lookup(spark)
     strength_df = create_strength_table(spark)
 
     return (
         talent
-        .withColumn(
-            "candidate_name_key",
-            _name_key(F.col("name"))
-        )
-        .join(
-            candidate_lookup,
-            on="candidate_name_key",
-            how="inner"
-        )
-        .select(
-            "candidate_id",
-            F.explode("strengths").alias(
-                "strength_name"
-            )
-        )
-        .join(
-            strength_df,
-            on="strength_name",
-            how="inner"
-        )
-        .select(
-            "candidate_id",
-            "strength_id"
-        )
+        .withColumn("candidate_name_key", _name_key(F.col("name")))
+        .join(candidate_lookup, on="candidate_name_key", how="inner")
+        .select("candidate_id", F.explode("strengths").alias("strength_name"))
+        .join(strength_df, on="strength_name", how="inner")
+        .select("candidate_id", "strength_id")
         .dropDuplicates()
     )
 
 
-def create_weakness_table(
-    spark: SparkSession
-) -> DataFrame:
+def create_weakness_table(spark: SparkSession) -> DataFrame:
+    """
+    Build the weakness dimension table from talent weaknesses arrays.
 
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Weakness dimension table.
+    """
     return (
         spark.table("all_talent")
-        .select(
-            F.explode("weaknesses").alias(
-                "weakness_name"
-            )
-        )
-        .withColumn(
-            "weakness_name",
-            _clean_text(
-                F.col("weakness_name")
-            )
-        )
-        .filter(
-            F.col("weakness_name").isNotNull()
-        )
+        .select(F.explode("weaknesses").alias("weakness_name"))
+        .withColumn("weakness_name", _clean_text(F.col("weakness_name")))
+        .filter(F.col("weakness_name").isNotNull())
         .distinct()
-        .withColumn(
-            "weakness_id",
-            F.row_number().over(
-                Window.orderBy("weakness_name")
-            )
-        )
-        .select(
-            "weakness_id",
-            "weakness_name"
-        )
+        .withColumn("weakness_id", F.row_number().over(Window.orderBy("weakness_name")))
+        .select("weakness_id", "weakness_name")
     )
 
 
-def create_candidate_weakness_table(
-    spark: SparkSession
-) -> DataFrame:
+def create_candidate_weakness_table(spark: SparkSession) -> DataFrame:
+    """
+    Map candidate records to canonical weakness IDs.
 
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Candidate weakness relationship table.
+    """
     talent = spark.table("all_talent")
     candidate_lookup = _candidate_lookup(spark)
     weakness_df = create_weakness_table(spark)
 
     return (
         talent
-        .withColumn(
-            "candidate_name_key",
-            _name_key(F.col("name"))
-        )
-        .join(
-            candidate_lookup,
-            on="candidate_name_key",
-            how="inner"
-        )
-        .select(
-            "candidate_id",
-            F.explode("weaknesses").alias(
-                "weakness_name"
-            )
-        )
-        .join(
-            weakness_df,
-            on="weakness_name",
-            how="inner"
-        )
-        .select(
-            "candidate_id",
-            "weakness_id"
-        )
+        .withColumn("candidate_name_key", _name_key(F.col("name")))
+        .join(candidate_lookup, on="candidate_name_key", how="inner")
+        .select("candidate_id", F.explode("weaknesses").alias("weakness_name"))
+        .join(weakness_df, on="weakness_name", how="inner")
+        .select("candidate_id", "weakness_id")
         .dropDuplicates()
     )
 
 
 def create_trainer_table(spark: SparkSession) -> DataFrame:
+    """
+    Build the trainer dimension from academy records.
+
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Trainer dimension table.
+    """
     return (
         spark.table("all_academy")
         .select(_clean_text(F.col("trainer")).alias("trainer_name"))
         .filter(F.col("trainer_name").isNotNull())
         .distinct()
-        .withColumn(
-            "trainer_id",
-            F.row_number().over(Window.orderBy("trainer_name"))
-        )
+        .withColumn("trainer_id", F.row_number().over(Window.orderBy("trainer_name")))
         .select("trainer_id", "trainer_name")
     )
 
 
 def create_trainee_table(spark: SparkSession) -> DataFrame:
+    """
+    Create the trainee table from academy candidate matches.
+
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Trainee table with cohort and start date.
+    """
     academy_base = _academy_base_with_candidate(spark)
 
     return (
         academy_base
         .select("candidate_id", "start_date", "academy_cohort")
         .distinct()
-        .withColumn(
-            "trainee_id",
-            F.row_number().over(
-                Window.orderBy("candidate_id", "start_date", "academy_cohort")
-            )
-        )
+        .withColumn("trainee_id", F.row_number().over(Window.orderBy("candidate_id", "start_date", "academy_cohort")))
         .select("trainee_id", "candidate_id", "start_date", "academy_cohort")
     )
 
 
 def create_competency_table(spark: SparkSession) -> DataFrame:
+    """
+    Build a static competency dimension table.
+
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Competency dimension table.
+    """
     competencies = [
         ("Analytic",),
         ("Independent",),
@@ -602,15 +532,21 @@ def create_competency_table(spark: SparkSession) -> DataFrame:
 
     return (
         spark.createDataFrame(competencies, ["competency_name"])
-        .withColumn(
-            "competency_id",
-            F.row_number().over(Window.orderBy("competency_name"))
-        )
+        .withColumn("competency_id", F.row_number().over(Window.orderBy("competency_name")))
         .select("competency_id", "competency_name")
     )
 
 
 def create_weekly_review_table(spark: SparkSession) -> DataFrame:
+    """
+    Generate weekly review records for each trainee-trainer pairing.
+
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Weekly review table.
+    """
     academy_df = spark.table("all_academy")
     academy_base = _academy_base_with_candidate(spark)
     trainee_df = create_trainee_table(spark)
@@ -624,11 +560,7 @@ def create_weekly_review_table(spark: SparkSession) -> DataFrame:
         academy_base
         .select("candidate_id", "start_date", "academy_cohort", "trainer_name")
         .distinct()
-        .join(
-            trainee_df,
-            on=["candidate_id", "start_date", "academy_cohort"],
-            how="inner"
-        )
+        .join(trainee_df, on=["candidate_id", "start_date", "academy_cohort"], how="inner")
         .join(trainer_df, on="trainer_name", how="inner")
         .select("trainee_id", "trainer_id")
         .distinct()
@@ -637,15 +569,21 @@ def create_weekly_review_table(spark: SparkSession) -> DataFrame:
     return (
         base_df
         .crossJoin(week_df)
-        .withColumn(
-            "review_id",
-            F.row_number().over(Window.orderBy("trainee_id", "week"))
-        )
+        .withColumn("review_id", F.row_number().over(Window.orderBy("trainee_id", "week")))
         .select("review_id", "trainee_id", "trainer_id", "week")
     )
 
 
 def create_score_table(spark: SparkSession) -> DataFrame:
+    """
+    Build the score table by converting competency week columns into rows.
+
+    Args:
+        spark: Active SparkSession.
+
+    Returns:
+        DataFrame: Score table linking reviews, competencies, and values.
+    """
     academy_df = spark.table("all_academy")
 
     academy_base = _academy_base_with_candidate(spark)
@@ -654,23 +592,13 @@ def create_score_table(spark: SparkSession) -> DataFrame:
     weekly_review_df = create_weekly_review_table(spark)
     competency_df = create_competency_table(spark)
 
-    competency_columns = [
-        column
-        for column in academy_base.columns
-        if "_W" in column
-    ]
+    competency_columns = [column for column in academy_base.columns if "_W" in column]
 
-    # Force all competency columns to the same datatype
+    # Force all competency columns to the same datatype for stack conversion.
     for column in competency_columns:
-        academy_base = academy_base.withColumn(
-            column,
-            F.col(column).cast("double")
-        )
+        academy_base = academy_base.withColumn(column, F.col(column).cast("double"))
 
-    stack_expr = ", ".join(
-        f"'{column}', `{column}`"
-        for column in competency_columns
-    )
+    stack_expr = ", ".join(f"'{column}', `{column}`" for column in competency_columns)
 
     score_df = academy_base.selectExpr(
         "candidate_id",
@@ -687,78 +615,19 @@ def create_score_table(spark: SparkSession) -> DataFrame:
 
     score_df = (
         score_df
-        .withColumn(
-            "competency_name",
-            F.split(
-                F.col("competency_week"),
-                "_W"
-            )[0]
-        )
-        .withColumn(
-            "week",
-            F.split(
-                F.col("competency_week"),
-                "_W"
-            )[1].cast("int")
-        )
+        .withColumn("competency_name", F.split(F.col("competency_week"), "_W")[0])
+        .withColumn("week", F.split(F.col("competency_week"), "_W")[1].cast("int"))
     )
 
     return (
         score_df
-        .filter(
-            F.col("score_value").isNotNull()
-        )
-        .join(
-            trainee_df,
-            on=[
-                "candidate_id",
-                "start_date",
-                "academy_cohort"
-            ],
-            how="inner"
-        )
-        .join(
-            trainer_df,
-            on="trainer_name",
-            how="inner"
-        )
-        .join(
-            weekly_review_df,
-            on=[
-                "trainee_id",
-                "trainer_id",
-                "week"
-            ],
-            how="inner"
-        )
-        .join(
-            competency_df,
-            on="competency_name",
-            how="inner"
-        )
-        .select(
-            "review_id",
-            "competency_id",
-            F.col("score_value")
-             .cast("int")
-             .alias("score_value")
-        )
-        .dropDuplicates(
-            ["review_id", "competency_id"]
-        )
-        .withColumn(
-            "score_id",
-            F.row_number().over(
-                Window.orderBy(
-                    "review_id",
-                    "competency_id"
-                )
-            )
-        )
-        .select(
-            "score_id",
-            "review_id",
-            "competency_id",
-            "score_value"
-        )
+        .filter(F.col("score_value").isNotNull())
+        .join(trainee_df, on=["candidate_id", "start_date", "academy_cohort"], how="inner")
+        .join(trainer_df, on="trainer_name", how="inner")
+        .join(weekly_review_df, on=["trainee_id", "trainer_id", "week"], how="inner")
+        .join(competency_df, on="competency_name", how="inner")
+        .select("review_id", "competency_id", F.col("score_value").cast("int").alias("score_value"))
+        .dropDuplicates(["review_id", "competency_id"])
+        .withColumn("score_id", F.row_number().over(Window.orderBy("review_id", "competency_id")))
+        .select("score_id", "review_id", "competency_id", "score_value")
     )

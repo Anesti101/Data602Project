@@ -1,10 +1,25 @@
+"""
+Module: extract_talent.py
+
+Purpose:
+Extract talent JSON data from the S3 source bucket and persist it as a Spark table.
+
+Responsibilities:
+- Connect to AWS S3 and locate Talent JSON files
+- Load JSON content into pandas and normalize nested structures
+- Write the aggregated talent data to a Spark table
+- Document source extraction rules and Spark persistence strategy
+
+Author: Project Team
+"""
+
 import boto3
 import pandas as pd
 from io import BytesIO
-from pprint import pprint as pp
 import json
 from pyspark.sql import SparkSession
 
+# AWS S3 bucket containing final project source datasets.
 s3 = boto3.client('s3')
 
 bucket_name = 'data602-final-project'
@@ -35,6 +50,7 @@ for file in talent_json_files[:5]:
     df['Source_file'] = file
     dfs.append(df)
 
+# Combine talent records into a single DataFrame so Spark can create a table.
 all_talent = pd.concat(dfs, ignore_index=True)
 
 spark_df = spark.createDataFrame(all_talent)

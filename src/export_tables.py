@@ -1,6 +1,19 @@
+"""
+Module: export_tables.py
+
+Purpose:
+Export transformed Spark DataFrames to CSV files for downstream load steps.
+
+Responsibilities:
+- Create exports for each transformed table
+- Persist export CSV files into the etl_exports directory
+- Provide console logging for row counts and errors
+
+Author: Project Team
+"""
+
 from src.transform import *
 import os
-
 
 print("=" * 50)
 print("CREATING TRANSFORMED TABLES")
@@ -38,7 +51,8 @@ tables = {
     "score": score_df
 }
 
-print("\n")
+print("
+")
 print("=" * 50)
 print("EXPORTING TABLES")
 print("=" * 50)
@@ -50,7 +64,8 @@ for table_name, df in tables.items():
     try:
         row_count = df.count()
 
-        print(f"\nExporting {table_name}")
+        print(f"
+Exporting {table_name}")
         print(f"Rows: {row_count}")
 
         pandas_df = df.toPandas()
@@ -68,7 +83,8 @@ for table_name, df in tables.items():
         print(f"✗ Failed exporting {table_name}")
         print(str(e))
 
-print("\n")
+print("
+")
 print("=" * 50)
 print("EXPORT COMPLETE")
 print("=" * 50)

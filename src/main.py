@@ -1,9 +1,31 @@
+"""
+Module: main.py
+
+Purpose:
+Bootstrap the Spark ETL pipeline and orchestrate transformation, validation, and load operations.
+
+Responsibilities:
+- Create the Spark session
+- Generate transformed DataFrames from raw tables
+- Validate record counts before load
+- Execute loader functions for each target table
+- Manage Spark lifecycle and error reporting
+
+Author: Project Team
+"""
+
 from src.transform import *
 from src.load import *
 from pyspark.sql import SparkSession
 
 
 def create_spark_session():
+    """
+    Create a SparkSession for the ETL pipeline.
+
+    Returns:
+        SparkSession: Configured Spark session for local or cluster execution.
+    """
     return (
         SparkSession.builder
         .appName("sparta-global-etl")
@@ -12,17 +34,29 @@ def create_spark_session():
 
 
 def main():
+    """
+    Run the end-to-end ETL pipeline.
+
+    The function transforms raw source tables into analytics-ready datasets,
+    validates the result counts, and loads them into the target database.
+
+    Raises:
+        Exception: Any failure during transformation or load will be re-raised
+            after logging.
+    """
 
     spark = None
 
     try:
-
         spark = create_spark_session()
 
         print("=" * 50)
         print("Creating transformed DataFrames...")
         print("=" * 50)
 
+        # ==================================================
+        # Data Transformation
+        # ==================================================
         candidate_df = create_candidate_table(spark)
         assessment_df = create_assessment_table(spark)
         interview_df = create_interview_table(spark)
@@ -43,7 +77,8 @@ def main():
         weekly_review_df = create_weekly_review_table(spark)
         score_df = create_score_table(spark)
 
-        print("\nValidating transformed DataFrames...")
+        print("
+Validating transformed DataFrames...")
         print("-" * 50)
 
         tables = {
@@ -66,7 +101,8 @@ def main():
         for table_name, df in tables.items():
             print(f"{table_name}: {df.count()} rows")
 
-        print("\nLoading dimension tables...")
+        print("
+Loading dimension tables...")
         print("-" * 50)
 
         load_candidate(candidate_df)
@@ -76,48 +112,52 @@ def main():
         load_trainer(trainer_df)
         load_competency(competency_df)
 
-        print("\nLoading assessment/interview tables...")
+        print("
+Loading assessment/interview tables...")
         print("-" * 50)
 
         load_assessment(assessment_df)
         load_interview(interview_df)
 
-        print("\nLoading relationship tables...")
+        print("
+Loading relationship tables...")
         print("-" * 50)
 
         load_candidate_technology(candidate_technology_df)
         load_candidate_strength(candidate_strength_df)
         load_candidate_weakness(candidate_weakness_df)
 
-        print("\nLoading academy tables...")
+        print("
+Loading academy tables...")
         print("-" * 50)
 
         load_trainee(trainee_df)
         load_weekly_review(weekly_review_df)
 
-        print("\nLoading score tables...")
+        print("
+Loading score tables...")
         print("-" * 50)
 
         load_score(score_df)
 
-        print("\n" + "=" * 50)
+        print("
+" + "=" * 50)
         print("Pipeline completed successfully.")
         print("=" * 50)
 
     except Exception as e:
-
-        print("\n" + "=" * 50)
+        print("
+" + "=" * 50)
         print("PIPELINE FAILED")
         print("=" * 50)
         print(f"Error: {e}")
-
         raise
 
     finally:
-
         if spark is not None:
             spark.stop()
-            print("\nSpark session stopped.")
+            print("
+Spark session stopped.")
 
 
 if __name__ == "__main__":
