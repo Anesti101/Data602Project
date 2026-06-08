@@ -1,5 +1,13 @@
 # Sparta Global Recruitment and Academy ETL Pipeline
 
+End-to-end data engineering project built with PySpark, PostgreSQL, AWS S3 and Databricks to consolidate recruitment and academy data into a normalised analytical model.
+
+## Architecture Diagram
+
+![ETL Architecture](docs/images/etl-architecture.png)
+
+The diagram illustrates how recruitment and academy data is extracted from multiple source systems, transformed using PySpark, and loaded into a normalised PostgreSQL database for reporting and analysis.
+
 ## Project Overview
 This repository contains a data engineering project that consolidates fragmented recruitment and academy data into a normalised PostgreSQL model. The implementation combines PySpark transformations, S3 extraction scripts, SQL schema design, Databricks-oriented notebook workflows, and CSV export/load utilities.
 
@@ -69,10 +77,10 @@ Because this repository includes both notebook-driven and script-based workflows
 Use the extraction scripts under `src/extract/` (or Databricks notebooks) to ingest S3 source files into Spark tables. The transform layer currently expects `all_applicants`, `all_assessments`, `all_talent`, and `all_academy`, so ensure your table names are aligned before running `src/main.py`.
 
 ### 2) Run transformations and pipeline orchestration
-Use `src/main.py` to build transformed DataFrames and call table load functions (requires Spark and database config). For a fully runnable end-to-end load, the active `src/load.py` implementation must be wired to a valid database engine/connector.
+Use `src/main.py` to build transformed DataFrames and load destination tables (requires Spark and database config).
 
 ### 3) Optional CSV export workflow
-Use `src/export_tables.py` to materialise transformed outputs into `src/etl_exports/`. This script assumes a live Spark session object (`spark`) is already available in scope.
+Use `src/export_tables.py` to materialise transformed outputs into `src/etl_exports/`.
 
 ### 4) Optional CSV-to-Neon load workflow
 Use `src/load_to_neon.py` to append exported CSV tables to Neon in FK-safe load order.
@@ -127,7 +135,7 @@ Data602ProjectRoom2/
 1. **Extract**
    - `src/extract/extract_applicants.py`: loads applicant CSV files from S3.
    - `src/extract/extract_assessments.py`: flattens assessment text files into line-level records.
-   - `src/extract/extract_talent.py`: normalises talent JSON files (currently limited to a sampled subset in-script).
+   - `src/extract/extract_talent.py`: normalises talent JSON files.
    - `src/extract/extract_academy.py`: ingests academy CSV files and tags source metadata.
 2. **Transform**
    - `src/transform.py` builds normalised dimensions/facts and bridge tables:
@@ -165,7 +173,7 @@ Data602ProjectRoom2/
 - Candidate matching across datasets using normalised name keys.
 - Unpivoting of wide technology and competency-week structures into relational form.
 - Fully normalised schema design with fact/dimension and bridge-table patterns.
-- Ordered loading strategy for foreign-key-safe inserts in the CSV-to-Neon workflow.
+- Ordered loading strategy for foreign-key-safe inserts.
 
 ## ETL, Analytics, ML, API, and Visualisation Components
 - **ETL/Data Engineering**: implemented.
@@ -194,7 +202,6 @@ Data602ProjectRoom2/
 - Implement complete automated testing in `tests/test_etl.py`.
 - Replace hard-coded credentials with environment-variable/secret-manager patterns.
 - Resolve table naming consistency across extract and transform layers.
-- Remove in-script sampling limits in extraction code where full-source ingestion is required.
 - Finalise Databricks script modules (`databricks/ingest.py`, `transform.py`, `load.py`).
 - Populate `sql/queries.sql` with reusable analytics queries.
 - Expand operational documentation in `docs/project-plan.md` and `docs/user-stories.md`.
