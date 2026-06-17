@@ -212,4 +212,4 @@ Data602ProjectRoom2/
 
 ## Project Management and Supporting Documentation
 - Trello board: [Trello Scrum Board](https://trello.com/b/O4sMbjqY)
-- Documentation reference: [Documentation Guide]([https://docs.google.com/document/d/1jaSOddx5mvyZotscgOYWtfAxV1iPI86eR_tOPjIF16Y/edit?tab=t.0](https://docs.google.com/document/d/1Gt9wlIZn-vQ3SaXFqwD9N4hcl6RuJ-4aRfMSQg9CbVA/edit?tab=t.0))
+- Documentation reference: [Documentation Guide]((https://docs.google.com/document/d/1Gt9wlIZn-vQ3SaXFqwD9N4hcl6RuJ-4aRfMSQg9CbVA/edit?tab=t.0))
